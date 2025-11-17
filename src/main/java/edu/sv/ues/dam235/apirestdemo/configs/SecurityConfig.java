@@ -28,11 +28,11 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.disable())
                 .authorizeHttpRequests(auth -> auth
-                                .requestMatchers("/auth/login",
+                                .requestMatchers("/auth/login", "/auth/register",
                                         "/swagger-ui/*", "/v3/*",
                                         "/v3/api-docs/swagger-config")
                                 .permitAll()
-                                .anyRequest().authenticated() // Requiereautenticación para las demás rutas
+                                .anyRequest().authenticated() // Requiere autenticación para las demás rutas
                 );
         httpSecurity.addFilterBefore(jwtFilter,
                 UsernamePasswordAuthenticationFilter.class);

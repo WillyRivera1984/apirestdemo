@@ -1,5 +1,6 @@
 package edu.sv.ues.dam235.apirestdemo.configs;
 
+import edu.sv.ues.dam235.apirestdemo.services.TokenBlacklistService;
 import edu.sv.ues.dam235.apirestdemo.utilities.JwtUtil;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
@@ -8,18 +9,25 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.lang.NonNull;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
+
 @Configuration
 @EnableWebSecurity
 public class JwtFilter extends OncePerRequestFilter {
     @Autowired
     private JwtUtil jwtUtil;
+    @Autowired
+    private TokenBlacklistService tokenBlacklistService;
+    
     Claims claims = null;
+    
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response, FilterChain filterChain)
+    protected void doFilterInternal(@NonNull HttpServletRequest request,
+                                    @NonNull HttpServletResponse response,
+                                    @NonNull FilterChain filterChain)
             throws ServletException, IOException {
         response.setHeader("Access-Control-Allow-Origin",
                 "*");
@@ -38,6 +46,7 @@ public class JwtFilter extends OncePerRequestFilter {
         }
         String path = request.getServletPath();
         if (path.startsWith("/auth/login")
+                || path.startsWith("/auth/register")
                 || path.startsWith("/auth/verify-token")
                 || path.startsWith("/swagger-ui/")
                 || path.startsWith("/v3/")) {
@@ -52,6 +61,14 @@ public class JwtFilter extends OncePerRequestFilter {
         } else {
             token = authorizationHeader;
         }
+        
+        // Validar que el token no esté en la lista negra
+        if (token != null && tokenBlacklistService.isTokenBlacklisted(token)) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.getWriter().write("No autorizado: El token ha sido revocado (logout)");
+            return;
+        }
+        
         if (jwtUtil.validatedTokenPermission(token)) {
             filterChain.doFilter(request, response);
         } else {
